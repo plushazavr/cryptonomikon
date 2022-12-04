@@ -134,32 +134,57 @@ export default {
       sel: null
     }
   }, 
+
+  //загружаем данные из локального хранилища методом created, можно на прямую в data
+  created() {
+    const tickersData = localStorage.getItem('cryptonomikon-list');
+    if(tickersData) {
+      this.tickers = JSON.parse(tickersData); //преобразуем из JSON
+      this.tickers.forEach(ticker => {
+        this.subscribeToUpdates(ticker.name); //подписаться на обновления данных для каждого тикера который загружен из локального хранилища
+      })
+    }
+  },
+
   methods: {
+    subscribeToUpdates(tickerName) {
+      //соединение с api и получение-обновление данных через интервал времени
+      setInterval(async () => {
+        const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=61989cea893b6c0312652ceae72768e37412bbe7e6d6e97b6e30be106327a288`);
+        const data = await f.json();
+        // currentTicker.price = data;
+        this.tickers.find(t => t.name == tickerName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+        if (this.sel?.name == tickerName) {
+          this.graph.push(data.USD)
+        }
+      }, 3000)
+      this.ticker = ''
+    },
+  },
+
+    //добавление тикера и его графика
     add() {
       const currentTicker = {
         name: this.ticker,
         price: '-',
         graph: []
       }
-      this.tickers.push(currentTicker);
-      setInterval(async() => {
-        const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=61989cea893b6c0312652ceae72768e37412bbe7e6d6e97b6e30be106327a288`);
-        const data = await f.json();
-        // currentTicker.price = data;
-        this.tickers.find(t => t.name == currentTicker.name).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-        if (this.sel?.name == currentTicker.name) {
-          this.graph.push(data.USD)
-        }
-      }, 3000)
-      this.ticker = ''
+      this.tickers.push(currentTicker); //пушим новый тикер в конец массива
+
+      localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
+      this.subscribeToUpdates(currentTicker.name) //запись в локальное хранилище и данные преобразуем в JSON
     },
+
+    //выбор тикера
     select(ticker) {
       this.sel = ticker;
       this.graph = [];
     },
+    //удаление тикера
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter(t => t !== tickerToRemove)
     },
+    //рисуем график с учетом мах и min высоты
     normalizeGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
@@ -168,8 +193,5 @@ export default {
       );
     }
   }
-};
 
 </script>
-
-<style src="./app.css"></style>
