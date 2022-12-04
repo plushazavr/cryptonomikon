@@ -64,11 +64,15 @@
         <div>
           <button
             class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            v-if="page > 1"
+            @click="page = page - 1"
           >
             Назад
           </button>
           <button
             class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            v-if="hasNextPage"
+            @click="page = page + 1"
           >
             Вперед
           </button>
@@ -148,15 +152,18 @@ export default {
       tickers: [],
       sel: null,
       page: 1,
-      filter: ''
+      filter: '',
+      hasNextPage: true
     }
   }, 
 
   //загружаем данные из локального хранилища методом created, можно на прямую в data
   created() {
-    const tickersData = localStorage.getItem('cryptonomikon-list');
-    if(tickersData) {
-      this.tickers = JSON.parse(tickersData); //преобразуем из JSON
+    const tickersData = localStorage.getItem('cryptonomikon-list'); //загруженные тикеры
+    const filterData = localStorage.getItem('filtered-tickers'); //состояние фильтра
+    if(tickersData, filterData) {
+      this.tickers = JSON.parse(tickersData);
+      this.filter =  JSON.parse(filterData);//преобразуем из JSON
       this.tickers.forEach(ticker => {
         this.subscribeToUpdates(ticker.name); //подписаться на обновления данных для каждого тикера который загружен из локального хранилища
       })
@@ -164,9 +171,19 @@ export default {
   },
 
   methods: {
-    //возвращает отфильтрованный список тикеров по наличию введенных букв в инпут
+    
     filteredTickers() {
-      return this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase()))
+      //отображение 6ти тикеров на странице
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+
+      const filteredTickers = this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase()))
+
+      this.hasNextPage = filteredTickers.length > end;
+
+      localStorage.setItem('filtered-tickers', JSON.stringify(this.filter));
+
+      return filteredTickers.slice(start, end); //возвращает отфильтрованный список тикеров по наличию введенных букв в инпут
     },
 
     subscribeToUpdates(tickerName) {
@@ -217,6 +234,13 @@ export default {
       );
     }
   },
+
+  watch: {
+    //переводит на первую страницу тикеров при фильтрации
+    filter() {
+      this.page = 1;
+    },
+  }
 };
 
 </script>
