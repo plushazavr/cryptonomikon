@@ -219,9 +219,9 @@ export default {
         price: '-',
         graph: []
       }
-      this.tickers.push(currentTicker); //пушим новый тикер в конец массива
+      this.tickers = [...this.tickers, currentTicker]; //пушим новый тикер в конец массива и обновляем ссылку на массив
       this.filter = ''; //сбрасываем фильтер после добавления нового тикера
-      localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
+      // localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
       this.subscribeToUpdates(currentTicker.name) //запись в локальное хранилище и данные преобразуем в JSON
     },
     //выбор тикера
@@ -233,13 +233,17 @@ export default {
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter(t => t !== tickerToRemove);
 
-      //удалем график выюранного тикера при его удалении
+      //удалем график выбранного тикера при его удалении
       if (this.selectedTicker === tickerToRemove) {
         this.selectedTicker = null;
     }
   }
 },
   watch: {
+    tickers() {
+      localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
+    },
+
     //перебрасывает на предыдущую страницу, если после удаления не осталось на странице тикеров
     paginatedTickers() {
       if (this.paginatedTickers.length === 0 && this.page > 1) {
@@ -251,6 +255,6 @@ export default {
     filter() {
       this.page = 1;
     },
-  }
+  } 
 };
 </script>
