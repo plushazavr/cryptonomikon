@@ -240,6 +240,13 @@ export default {
   }
 },
   watch: {
+    //перебрасывает на предыдущую страницу, если после удаления не осталось на странице тикеров
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1;
+      }
+    },
+
     //переводит на первую страницу тикеров при фильтрации
     filter() {
       this.page = 1;
