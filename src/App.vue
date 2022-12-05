@@ -82,7 +82,7 @@
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div 
-            v-for="t in filteredTickers()"
+            v-for="t in paginatedTickers"
             :key="t.name"
             @click="select(t)"
             :class="{
@@ -120,7 +120,7 @@
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-            v-for="(bar, idx) in normalizeGraph()"
+            v-for="(bar, idx) in normalizedGraph"
             :key="idx"
             :style="{ height: `${bar}%` }"
             class="bg-purple-800 border w-10"></div>
@@ -152,12 +152,11 @@ export default {
       tickers: [],
       sel: null,
       page: 1,
-      filter: '',
-      hasNextPage: true
+      filter: ''
     }
   }, 
 
-  //загружаем данные из локального хранилища методом created, можно на прямую в data
+  //загружаем данные из локального хранилища методом жизненного цикла created, можно на прямую в data
   created() {
     const tickersData = localStorage.getItem('cryptonomikon-list'); //загруженные тикеры
     const filterData = localStorage.getItem('filtered-tickers'); //состояние фильтра
@@ -170,22 +169,45 @@ export default {
     }
   },
 
-  methods: {
-    
-    filteredTickers() {
-      //отображение 6ти тикеров на странице
-      const start = (this.page - 1) * 6;
-      const end = this.page * 6;
-
-      const filteredTickers = this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase()))
-
-      this.hasNextPage = filteredTickers.length > end;
-
-      localStorage.setItem('filtered-tickers', JSON.stringify(this.filter));
-
-      return filteredTickers.slice(start, end); //возвращает отфильтрованный список тикеров по наличию введенных букв в инпут
+  computed: {
+    startIndex() {
+      return (this.page - 1) * 6;
     },
 
+    endIndex() {
+      return this.page * 6;
+    },
+
+    filteredTickers() {
+      localStorage.setItem('filtered-tickers', JSON.stringify(this.filter));
+      return this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase())); //отображение тикеров согласно фильтру      
+    },
+
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.startIndex, this.endIndex); //возвращает отфильтрованный список тикеров по наличию введенных букв в инпут
+    },
+
+    hasNextPage() {
+      return this.filteredTickers.length > this.endIndex;
+    },
+
+    //рисуем график с учетом мах и min высоты
+    normalizedGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+
+      //если разница между значениями графика минимальна, то отображаются одинковые по высоте столбцы
+      if(maxValue == minValue) {
+        return this.graph.map(() => 50);
+      }
+      
+      return this.graph.map(
+        price => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+      );
+    }
+  },
+
+  methods: {
     subscribeToUpdates(tickerName) {
       //соединение с api и получение-обновление данных через интервал времени
       setInterval(async () => {
@@ -224,15 +246,6 @@ export default {
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter(t => t !== tickerToRemove)
     },
-
-    //рисуем график с учетом мах и min высоты
-    normalizeGraph() {
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-      return this.graph.map(
-        price => 5 + ((price - minValue) * 95) / (maxValue - minValue)
-      );
-    }
   },
 
   watch: {
