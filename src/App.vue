@@ -86,7 +86,7 @@
             :key="t.name"
             @click="select(t)"
             :class="{
-              'border-4':sel == t
+              'border-4':selectedTicker == t
             }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer">
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -112,11 +112,11 @@
       </template>
       
       <section
-        v-if="sel"
+        v-if="selectedTicker"
         class="relative"
         >
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{sel.name}} - USD
+          {{selectedTicker.name}} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
@@ -126,7 +126,7 @@
             class="bg-purple-800 border w-10"></div>
         </div>
         <button
-          @click="sel = null"
+          @click="selectedTicker = null"
           type="button" class="absolute top-0 right-0">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
             xmlns:svgjs="http://svgjs.com/svgjs" version="1.1" width="30" height="30" x="0" y="0"
@@ -150,12 +150,11 @@ export default {
     return {
       ticker: '',
       tickers: [],
-      sel: null,
+      selectedTicker: null,
       page: 1,
       filter: ''
     }
   }, 
-
   //загружаем данные из локального хранилища методом жизненного цикла created, можно на прямую в data
   created() {
     const tickersData = localStorage.getItem('cryptonomikon-list'); //загруженные тикеры
@@ -168,34 +167,27 @@ export default {
       })
     }
   },
-
   computed: {
     startIndex() {
       return (this.page - 1) * 6;
     },
-
     endIndex() {
       return this.page * 6;
     },
-
     filteredTickers() {
       localStorage.setItem('filtered-tickers', JSON.stringify(this.filter));
       return this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase())); //отображение тикеров согласно фильтру      
     },
-
     paginatedTickers() {
       return this.filteredTickers.slice(this.startIndex, this.endIndex); //возвращает отфильтрованный список тикеров по наличию введенных букв в инпут
     },
-
     hasNextPage() {
       return this.filteredTickers.length > this.endIndex;
     },
-
     //рисуем график с учетом мах и min высоты
     normalizedGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
-
       //если разница между значениями графика минимальна, то отображаются одинковые по высоте столбцы
       if(maxValue == minValue) {
         return this.graph.map(() => 50);
@@ -206,7 +198,6 @@ export default {
       );
     }
   },
-
   methods: {
     subscribeToUpdates(tickerName) {
       //соединение с api и получение-обновление данных через интервал времени
@@ -215,13 +206,12 @@ export default {
         const data = await f.json();
         // currentTicker.price = data;
         this.tickers.find(t => t.name == tickerName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-        if (this.sel?.name == tickerName) {
+        if (this.selectedTicker?.name == tickerName) {
           this.graph.push(data.USD)
         }
       }, 3000)
       this.ticker = ''
     },  
-
     //добавление тикера и его графика
     add() {
       const currentTicker = {
@@ -231,23 +221,24 @@ export default {
       }
       this.tickers.push(currentTicker); //пушим новый тикер в конец массива
       this.filter = ''; //сбрасываем фильтер после добавления нового тикера
-
       localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
       this.subscribeToUpdates(currentTicker.name) //запись в локальное хранилище и данные преобразуем в JSON
     },
-
     //выбор тикера
     select(ticker) {
-      this.sel = ticker;
+      this.selectedTicker = ticker;
       this.graph = [];
     },
-
     //удаление тикера
     handleDelete(tickerToRemove) {
-      this.tickers = this.tickers.filter(t => t !== tickerToRemove)
-    },
-  },
+      this.tickers = this.tickers.filter(t => t !== tickerToRemove);
 
+      //удалем график выюранного тикера при его удалении
+      if (this.selectedTicker === tickerToRemove) {
+        this.selectedTicker = null;
+    }
+  }
+},
   watch: {
     //переводит на первую страницу тикеров при фильтрации
     filter() {
@@ -255,5 +246,4 @@ export default {
     },
   }
 };
-
 </script>
