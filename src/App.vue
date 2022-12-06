@@ -94,7 +94,7 @@
                 {{t.name}} - USD
               </dt>
               <dd class="mt-1 text-3xl font-semibold text-gray-900">
-                {{t.price}}
+                {{formatPrice(t.price)}}
               </dd>
             </div>
             <div class="w-full border-t border-gray-200"></div>
@@ -144,6 +144,8 @@
 </template>
 
 <script>
+import { loadTickers } from './api';
+
 export default {
   name: 'App',
   data() {
@@ -161,11 +163,10 @@ export default {
     const filterData = localStorage.getItem('filtered-tickers'); //состояние фильтра
     if(tickersData, filterData) {
       this.tickers = JSON.parse(tickersData);
-      this.filter =  JSON.parse(filterData);//преобразуем из JSON
-      this.tickers.forEach(ticker => {
-        this.subscribeToUpdates(ticker.name); //подписаться на обновления данных для каждого тикера который загружен из локального хранилища
-      })
+      this.filter =  JSON.parse(filterData);//преобразуем из JSON      
     }
+
+    setInterval(this.updateTickers, 5000);
   },
   computed: {
     startIndex() {
@@ -199,18 +200,24 @@ export default {
     }
   },
   methods: {
-    subscribeToUpdates(tickerName) {
-      //соединение с api и получение-обновление данных через интервал времени
-      setInterval(async () => {
-        const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=61989cea893b6c0312652ceae72768e37412bbe7e6d6e97b6e30be106327a288`);
-        const data = await f.json();
-        // currentTicker.price = data;
-        this.tickers.find(t => t.name == tickerName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-        if (this.selectedTicker?.name == tickerName) {
-          this.graph.push(data.USD)
-        }
-      }, 3000)
-      this.ticker = ''
+    formatPrice(price) {
+      if (price == '-') {
+        return price;
+      }
+      return price > 1 ? price.toFixed(2) : price.toPrecision(2);
+
+    },
+
+    async updateTickers() {
+      if (!this.tickers.length) {
+        return;
+      }      
+      const exchangeData = await loadTickers(this.tickers.map(t => t.name));
+      
+      this.tickers.forEach(ticker => {
+        const price = exchangeData[ticker.name.toUpperCase()];              
+        ticker.price = price ?? '-';
+      });
     },  
     //добавление тикера и его графика
     add() {
@@ -221,8 +228,7 @@ export default {
       }
       this.tickers = [...this.tickers, currentTicker]; //пушим новый тикер в конец массива и обновляем ссылку на массив
       this.filter = ''; //сбрасываем фильтер после добавления нового тикера
-      // localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
-      this.subscribeToUpdates(currentTicker.name) //запись в локальное хранилище и данные преобразуем в JSON
+      // localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));      
     },
     //выбор тикера
     select(ticker) {
