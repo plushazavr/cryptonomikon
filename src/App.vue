@@ -207,9 +207,15 @@ export default {
     //получает на вход имя и прайс. Все тикеры, находим все, которые соответствуют по имени,и для каждого говорим что t.price = price
     updateTicker(tickerName, price) {
       this.tickers
-      .filter(t => t.name === tickerName)
-      .forEach(t => {t.price = price})
+        .filter(t => t.name === tickerName)
+        .forEach(t => {
+          if (t === this.selectedTicker) {
+            this.graph.push(price);
+          }
+          t.price = price;
+        });
     },
+
     formatPrice(price) {
       if (price == '-') {
         return price;
