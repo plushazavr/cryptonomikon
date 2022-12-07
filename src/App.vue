@@ -144,7 +144,7 @@
 </template>
 
 <script>
-import { loadTickers } from './api';
+import { subscribeToTicker, unscribeFromTicker } from './api';
 
 export default {
   name: 'App',
@@ -158,13 +158,16 @@ export default {
     }
   }, 
   //загружаем данные из локального хранилища методом жизненного цикла created, можно на прямую в data
-  created() {
+  created() { //загружаем список тикеров из localStorage
     const tickersData = localStorage.getItem('cryptonomikon-list'); //загруженные тикеры
     const filterData = localStorage.getItem('filtered-tickers'); //состояние фильтра
     if(tickersData, filterData) {
       this.tickers = JSON.parse(tickersData);
-      this.filter =  JSON.parse(filterData);//преобразуем из JSON      
-    }
+      this.filter =  JSON.parse(filterData);//преобразуем из JSON   
+      this.tickers.forEach(ticker => {
+      subscribeToTicker(ticker.name, newPrice => this.updateTicker(ticker.name, newPrice)); // запиши что когда вызовут тикер вызови все, что было раньше и еще функцию новую
+      });
+  }
 
     setInterval(this.updateTickers, 5000);
   },
@@ -200,6 +203,13 @@ export default {
     }
   },
   methods: {
+    
+    //получает на вход имя и прайс. Все тикеры, находим все, которые соответствуют по имени,и для каждого говорим что t.price = price
+    updateTicker(tickerName, price) {
+      this.tickers
+      .filter(t => t.name === tickerName)
+      .forEach(t => {t.price = price})
+    },
     formatPrice(price) {
       if (price == '-') {
         return price;
@@ -209,26 +219,27 @@ export default {
     },
 
     async updateTickers() {
-      if (!this.tickers.length) {
-        return;
-      }      
-      const exchangeData = await loadTickers(this.tickers.map(t => t.name));
+      // if (!this.tickers.length) {
+      //   return;
+      // }
       
-      this.tickers.forEach(ticker => {
-        const price = exchangeData[ticker.name.toUpperCase()];              
-        ticker.price = price ?? '-';
-      });
+      // this.tickers.forEach(ticker => {
+      //   const price = exchangeData[ticker.name.toUpperCase()];              
+      //   ticker.price = price ?? '-';
+      // });
     },  
     //добавление тикера и его графика
     add() {
       const currentTicker = {
         name: this.ticker,
         price: '-',
-        graph: []
       }
       this.tickers = [...this.tickers, currentTicker]; //пушим новый тикер в конец массива и обновляем ссылку на массив
+      this.ticker = '';
       this.filter = ''; //сбрасываем фильтер после добавления нового тикера
-      // localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));      
+      // localStorage.setItem('cryptonomikon-list', JSON.stringify(this.tickers));
+      subscribeToTicker(currentTicker.name, newPrice => 
+        this.updateTicker(currentTicker.name, newPrice));     
     },
     //выбор тикера
     select(ticker) {
@@ -243,6 +254,7 @@ export default {
       if (this.selectedTicker === tickerToRemove) {
         this.selectedTicker = null;
     }
+    unscribeFromTicker(tickerToRemove.name)
   }
 },
   watch: {
